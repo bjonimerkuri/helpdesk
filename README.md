@@ -8,14 +8,10 @@
 A support-ticket system. Customers open tickets and follow the conversation. Agents work the queue: triage, assign,
 reply, and move each ticket through a strict status flow.
 
-**[Live demo](https://REPLACE-WITH-YOUR-VERCEL-URL.vercel.app)** · demo accounts `customer@example.com`,
+**[Live demo](https://helpdesk-bay.vercel.app/login)** · demo accounts `customer@example.com`,
 `agent@example.com`, `admin@example.com` (password `password123`; the sign-in page has one-click buttons).
 
-![Agent queue](docs/screenshots/queue.png)
 
-| Sign in | Ticket |
-|---|---|
-| ![Sign in](docs/screenshots/sign-in.png) | ![Ticket detail](docs/screenshots/ticket.png) |
 
 ## What is interesting here
 
