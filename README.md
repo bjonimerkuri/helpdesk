@@ -1,7 +1,7 @@
 # Helpdesk
 
-[![CI](https://github.com/OWNER/helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/helpdesk/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/OWNER/helpdesk/actions/workflows/codeql.yml/badge.svg)](https://github.com/OWNER/helpdesk/actions/workflows/codeql.yml)
+[![CI](https://github.com/bjonimerkuri/helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/bjonimerkuri/helpdesk/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/bjonimerkuri/helpdesk/actions/workflows/codeql.yml/badge.svg)](https://github.com/bjonimerkuri/helpdesk/actions/workflows/codeql.yml)
 ![Node](https://img.shields.io/badge/node-20-339933)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -94,9 +94,9 @@ All routes are under `/api` and, except auth and health, need `Authorization: Be
 | POST | `/auth/register`, `/auth/login` | public, rate limited |
 | GET | `/tickets?status=&q=&page=&pageSize=` | any user, scoped by role |
 | POST | `/tickets` | any user |
-| GET | `/tickets/:id` | owner or staff; `404` otherwise |
+| GET | `/tickets/:id` | bjonimerkuri or staff; `404` otherwise |
 | PATCH | `/tickets/:id` | staff: status, priority, assignee |
-| POST | `/tickets/:id/comments` | owner or staff |
+| POST | `/tickets/:id/comments` | bjonimerkuri or staff |
 | GET | `/agents` | staff |
 
 Errors are always `{ "error": "message" }` with a meaningful status (`400` validation, `401`, `403`, `404`, `409`, `422`
@@ -110,7 +110,7 @@ invalid transition).
    and creates an isolated database branch for each preview deployment.
 3. Add environment variables: `JWT_SECRET` (`openssl rand -base64 48`) and, for a demo site, `SEED_DEMO_DATA=true`.
 4. Deploy. The build runs migrations (and seeds the demo accounts), builds Angular, and publishes `/api` as a function.
-5. Put the live URL at the top of this README and replace `OWNER` in the badges.
+5. Put the live URL at the top of this README and replace `bjonimerkuri` in the badges.
 
 ## Decisions and trade-offs
 
@@ -118,14 +118,6 @@ invalid transition).
 - [One Vercel project, API on the same origin](docs/adr/0002-same-origin-api-on-vercel.md)
 - [State machine on the server](docs/adr/0003-state-machine-on-the-server.md)
 - [JWT bearer auth and its limits](docs/adr/0004-jwt-bearer-auth.md)
-
-## Roadmap
-
-- [ ] Move the session token to an httpOnly cookie with CSRF protection
-- [ ] Shared rate-limit store and refresh tokens
-- [ ] Attachments and email notifications
-- [ ] Keyset pagination for very large queues
-- [ ] Angular component tests alongside the e2e suite
 
 ## License
 
