@@ -98,23 +98,6 @@ All routes are under `/api` and, except auth and health, need `Authorization: Be
 Errors are always `{ "error": "message" }` with a meaningful status (`400` validation, `401`, `403`, `404`, `409`, `422`
 invalid transition).
 
-## Deploy to Vercel
 
-1. Push the repo to GitHub and import it in Vercel. Set **Framework Preset** to *Other*. The build settings come from
-   [`vercel.json`](vercel.json).
-2. In the project, open **Storage** (Marketplace) and add **Neon Postgres**. This sets `DATABASE_URL` for production
-   and creates an isolated database branch for each preview deployment.
-3. Add environment variables: `JWT_SECRET` (`openssl rand -base64 48`) and, for a demo site, `SEED_DEMO_DATA=true`.
-4. Deploy. The build runs migrations (and seeds the demo accounts), builds Angular, and publishes `/api` as a function.
 5. Put the live URL at the top of this README and replace `bjonimerkuri` in the badges.
 
-## Decisions and trade-offs
-
-- [Plain SQL instead of an ORM](docs/adr/0001-plain-sql-over-orm.md)
-- [One Vercel project, API on the same origin](docs/adr/0002-same-origin-api-on-vercel.md)
-- [State machine on the server](docs/adr/0003-state-machine-on-the-server.md)
-- [JWT bearer auth and its limits](docs/adr/0004-jwt-bearer-auth.md)
-
-## License
-
-[MIT](LICENSE)
