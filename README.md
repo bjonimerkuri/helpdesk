@@ -1,63 +1,132 @@
-# Helpdesk (Angular + Node.js + PostgreSQL)
+# Helpdesk
 
-A support-ticket system with role-based access. Customers open tickets and follow the conversation. Agents and admins triage them: change status, assign them and reply.
+[![CI](https://github.com/OWNER/helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/helpdesk/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/OWNER/helpdesk/actions/workflows/codeql.yml/badge.svg)](https://github.com/OWNER/helpdesk/actions/workflows/codeql.yml)
+![Node](https://img.shields.io/badge/node-20-339933)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-## What it demonstrates
-- **Role-based access control:** customers only see their own tickets. Staff see everything. Other people's tickets return 404, not 403, so their existence is not leaked.
-- **A ticket state machine:** statuses can only move along allowed transitions (open, in progress, resolved, closed, reopen). The API returns the allowed next statuses, so the UI never duplicates the rules.
-- **Modern Angular:** standalone components, signals, the new control flow (`@if`, `@for`), lazy-loaded routes, functional guards and interceptors, typed reactive forms.
-- **RxJS in practice:** debounced search with `debounceTime` and `distinctUntilChanged`, `switchMap` to cancel stale requests, `combineLatest` and `BehaviorSubject` for reload and pagination state.
-- **Server-side filtering and pagination** with parameterized SQL and indexes.
-- **Validation with zod**, centralized error handling, JWT auth and bcrypt.
-- **Tests:** the business rules (transitions and visibility) are pure functions covered with Vitest.
+A support-ticket system. Customers open tickets and follow the conversation. Agents work the queue: triage, assign,
+reply, and move each ticket through a strict status flow.
 
-## Stack
-Angular 18 · RxJS · TypeScript · Node.js · Express · PostgreSQL (node-postgres, plain SQL) · zod · JWT · Vitest
+**[Live demo](https://REPLACE-WITH-YOUR-VERCEL-URL.vercel.app)** · demo accounts `customer@example.com`,
+`agent@example.com`, `admin@example.com` (password `password123`; the sign-in page has one-click buttons).
 
-## Roles
-| Role | Can do |
+![Agent queue](docs/screenshots/queue.png)
+
+| Sign in | Ticket |
 |---|---|
-| customer | Register, create tickets, see and comment on own tickets |
-| agent | See all tickets, comment, change status, assign |
-| admin | Same as agent (kept separate for future admin features) |
+| ![Sign in](docs/screenshots/sign-in.png) | ![Ticket detail](docs/screenshots/ticket.png) |
 
-## Data model
-```
-users 1──* tickets (created_by)      users 1──* tickets (assignee_id)
-tickets 1──* comments (author_id -> users)
+## What is interesting here
+
+- **Visibility without leaks.** Customers only ever see their own tickets. Someone else's ticket returns `404`, not
+  `403`, so its existence is not revealed. This is covered by an integration test and an end-to-end test.
+- **A server-owned state machine.** Status transitions are a pure function with unit tests. The API enforces them (`422`)
+  and sends `allowedStatuses` with each ticket, so the UI never duplicates the rules.
+- **Real database tests.** Integration tests run the actual SQL against PostgreSQL, including pagination, search and
+  wildcard escaping, instead of mocking the driver.
+- **Production-minded API.** Fail-fast env validation, `helmet`, request IDs with structured logs (credentials redacted),
+  rate-limited auth, pinned JWT algorithm, timing-safe login, `/api/health`, graceful shutdown, versioned SQL migrations
+  with an advisory lock.
+- **Modern Angular.** Standalone components, signals, new control flow, lazy routes, functional guards and
+  interceptors, typed reactive forms, RxJS where it earns its place (debounced search, `switchMap` cancellation).
+- **Accessible by default.** Labelled controls, skip link, live regions for errors, visible focus, reduced-motion support,
+  status shown as text plus colour, and axe checks in the e2e suite.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser["Angular SPA<br/>(static files)"] -- "/api/*" --> Fn["Express app<br/>(Vercel function)"]
+  Fn -- "pooled SQL" --> DB[("PostgreSQL<br/>(Neon)")]
 ```
 
-## Run locally
+More in [docs/architecture.md](docs/architecture.md) (data model, state machine, request flow) and the
+[decision records](docs/adr).
+
+| Layer | Choices |
+|---|---|
+| Web | Angular 18, RxJS, TypeScript, self-hosted variable font |
+| API | Node 20, Express, zod, node-postgres, JWT, bcrypt, pino, helmet |
+| Data | PostgreSQL 16 with trigram search indexes |
+| Quality | Vitest, Supertest, Playwright, axe, ESLint (with Angular a11y rules), Prettier, GitHub Actions, CodeQL, Dependabot |
+| Hosting | Vercel (static + serverless function), Neon Postgres |
+
+## Run it locally
+
+Requires Node 20 and Docker.
+
 ```bash
-docker compose up -d
-cd server && npm install && npm run seed && npm run dev
-cd web && npm install && npm start
-cd server && npm test
+docker compose up -d      # PostgreSQL, with helpdesk and helpdesk_test databases
+npm ci
+npm run db:migrate && npm run db:seed
+npm run dev               # web http://localhost:4200, API http://localhost:3001/api/health
 ```
-Open http://localhost:4200. Demo accounts (password `password123`): `customer@example.com`, `agent@example.com`, `admin@example.com`.
 
-If you started the database before, recreate it so the schema runs: `docker compose down -v && docker compose up -d`.
+| Script | What it does |
+|---|---|
+| `npm run dev` | API and web app with reload |
+| `npm run check` | Format check, lint, typecheck, unit tests, build |
+| `npm test` / `npm run test:coverage` | Unit tests for rules, config and helpers |
+| `npm run test:int` | API integration tests against PostgreSQL |
+| `npm run e2e` | Playwright end-to-end tests (starts both servers, resets the database) |
+| `npm run screenshots` | Regenerates the images above into `docs/screenshots` |
+| `npm run db:migrate` / `db:seed` / `db:reset` | Schema, demo data, wipe and reseed (never in production) |
+
+## Testing strategy
+
+| Level | What it proves | Where |
+|---|---|---|
+| Unit | Transition table, visibility, config validation, LIKE escaping | `apps/api/src/*.test.ts` |
+| Integration | Auth, scoping, 404 vs 403, state machine over HTTP, pagination, search | `apps/api/test/` |
+| End-to-end | Real browser flows for customer and agent, plus accessibility scans | `e2e/tests/` |
+
+CI runs three parallel jobs (quality, integration, e2e) with PostgreSQL service containers and uploads the Playwright
+report on failure.
 
 ## API
+
+All routes are under `/api` and, except auth and health, need `Authorization: Bearer <token>`.
+
 | Method | Route | Access |
 |---|---|---|
-| POST | `/auth/register`, `/auth/login` | public |
-| GET | `/tickets?status=&q=&page=&pageSize=` | any user (scoped by role) |
+| GET | `/health` | public (checks the database) |
+| POST | `/auth/register`, `/auth/login` | public, rate limited |
+| GET | `/tickets?status=&q=&page=&pageSize=` | any user, scoped by role |
 | POST | `/tickets` | any user |
-| GET | `/tickets/:id` | owner or staff |
-| PATCH | `/tickets/:id` | staff (status, priority, assignee) |
+| GET | `/tickets/:id` | owner or staff; `404` otherwise |
+| PATCH | `/tickets/:id` | staff: status, priority, assignee |
 | POST | `/tickets/:id/comments` | owner or staff |
 | GET | `/agents` | staff |
 
-## Decisions and trade-offs
-- **Plain SQL with node-postgres** instead of an ORM, to show query design, joins and parameterization.
-- **RxJS services instead of NgRx:** for this size, a store would add boilerplate without benefit. NgRx would be the next step if shared state grew.
-- **JWT in localStorage** keeps the demo simple. A production app should prefer httpOnly cookies.
-- **Offset pagination** is fine at this scale. Keyset pagination would suit very large tables.
+Errors are always `{ "error": "message" }` with a meaningful status (`400` validation, `401`, `403`, `404`, `409`, `422`
+invalid transition).
 
-## Limitations and next steps
-- [ ] Angular component tests and API integration tests against a real database
-- [ ] Migrations tool instead of a single schema file
-- [ ] Email notifications and attachments
-- [ ] Refresh tokens and rate limiting
-- [ ] Deploy a live demo and add the link and screenshots here
+## Deploy to Vercel
+
+1. Push the repo to GitHub and import it in Vercel. Set **Framework Preset** to *Other*. The build settings come from
+   [`vercel.json`](vercel.json).
+2. In the project, open **Storage** (Marketplace) and add **Neon Postgres**. This sets `DATABASE_URL` for production
+   and creates an isolated database branch for each preview deployment.
+3. Add environment variables: `JWT_SECRET` (`openssl rand -base64 48`) and, for a demo site, `SEED_DEMO_DATA=true`.
+4. Deploy. The build runs migrations (and seeds the demo accounts), builds Angular, and publishes `/api` as a function.
+5. Put the live URL at the top of this README and replace `OWNER` in the badges.
+
+## Decisions and trade-offs
+
+- [Plain SQL instead of an ORM](docs/adr/0001-plain-sql-over-orm.md)
+- [One Vercel project, API on the same origin](docs/adr/0002-same-origin-api-on-vercel.md)
+- [State machine on the server](docs/adr/0003-state-machine-on-the-server.md)
+- [JWT bearer auth and its limits](docs/adr/0004-jwt-bearer-auth.md)
+
+## Roadmap
+
+- [ ] Move the session token to an httpOnly cookie with CSRF protection
+- [ ] Shared rate-limit store and refresh tokens
+- [ ] Attachments and email notifications
+- [ ] Keyset pagination for very large queues
+- [ ] Angular component tests alongside the e2e suite
+
+## License
+
+[MIT](LICENSE)
