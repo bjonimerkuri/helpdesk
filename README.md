@@ -37,8 +37,7 @@ flowchart LR
   Fn -- "pooled SQL" --> DB[("PostgreSQL<br/>(Neon)")]
 ```
 
-More in [docs/architecture.md](docs/architecture.md) (data model, state machine, request flow) and the
-[decision records](docs/adr).
+More in [docs/architecture.md](docs/architecture.md) (data model, state machine, request flow).
 
 | Layer | Choices |
 |---|---|
@@ -66,7 +65,6 @@ npm run dev               # web http://localhost:4200, API http://localhost:3001
 | `npm test` / `npm run test:coverage` | Unit tests for rules, config and helpers |
 | `npm run test:int` | API integration tests against PostgreSQL |
 | `npm run e2e` | Playwright end-to-end tests (starts both servers, resets the database) |
-| `npm run screenshots` | Regenerates the images above into `docs/screenshots` |
 | `npm run db:migrate` / `db:seed` / `db:reset` | Schema, demo data, wipe and reseed (never in production) |
 
 ## Testing strategy
